@@ -1,0 +1,4 @@
+/* WPWix SEO — admin stilleri (sadece admin ekranlarında yüklenir). */
+
+.wpwix-ok  { color: #00a32a; font-weight: 600; margin-left: 8px; }
+.wpwix-err { color: #d63638; font-weight: 600; margin-left: 8px; }
