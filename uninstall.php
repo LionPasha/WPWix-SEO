@@ -12,6 +12,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 delete_option( 'wpwixseo_settings' );
 delete_option( 'wpwixseo_bulk_state' );
+delete_option( 'wpwixseo_flush_rewrite' );
 delete_transient( 'wpwixseo_sitemap' );
 
 global $wpdb;

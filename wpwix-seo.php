@@ -3,7 +3,7 @@
  * Plugin Name:       WPWix SEO
  * Plugin URI:        https://wpwix.com
  * Description:       Hızlı ve AI destekli WooCommerce SEO. Meta etiketler, Open Graph, JSON-LD ve sitemap — frontend'e sıfır CSS/JS yüküyle.
- * Version:           0.4.0
+ * Version:           1.0.0
  * Author:            Ahmet YÜRÜK
  * Author URI:        https://wpwix.com
  * Text Domain:       wpwix-seo
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WPWIX_SEO_VERSION', '0.4.0' );
+define( 'WPWIX_SEO_VERSION', '1.0.0' );
 define( 'WPWIX_SEO_FILE', __FILE__ );
 define( 'WPWIX_SEO_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -92,9 +92,34 @@ function wpwix_init() {
 	WPWix_SEO_Frontend::init();
 	WPWix_SEO_Analyzer::init();
 	WPWix_SEO_Bulk::init();
+	WPWix_SEO_Sitemap::init();
 
 	if ( is_admin() ) {
 		WPWix_SEO_Admin::init();
 	}
 }
 add_action( 'plugins_loaded', 'wpwix_init' );
+
+/**
+ * Etkinleştirmede sitemap rewrite kuralı için tek seferlik flush işaretle;
+ * kural init'te kaydedildikten sonra flush edilir.
+ */
+register_activation_hook(
+	__FILE__,
+	static function () {
+		update_option( 'wpwixseo_flush_rewrite', 1, false );
+	}
+);
+
+register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
+
+add_action(
+	'init',
+	static function () {
+		if ( get_option( 'wpwixseo_flush_rewrite' ) ) {
+			flush_rewrite_rules();
+			delete_option( 'wpwixseo_flush_rewrite' );
+		}
+	},
+	20
+);
