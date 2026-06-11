@@ -290,9 +290,11 @@ class WPWix_SEO_Frontend {
 			'@graph'   => array( $product_node, $breadcrumb, $organization ),
 		);
 
+		// Eğik çizgiler bilinçli olarak escape'li bırakılır (<\/): içerikten
+		// gelebilecek </script> ile script etiketinden kaçışı engeller.
 		printf(
 			'<script type="application/ld+json">%s</script>' . "\n",
-			wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode output is safe JSON.
+			wp_json_encode( $schema, JSON_UNESCAPED_UNICODE ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode output is safe JSON.
 		);
 	}
 

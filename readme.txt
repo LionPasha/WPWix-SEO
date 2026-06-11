@@ -4,7 +4,7 @@ Tags: seo, woocommerce, ai, schema, open graph
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,12 @@ Analiz ve skor:
 2. Eklentiyi WordPress yönetim panelinden etkinleştirin (WooCommerce kurulu olmalıdır).
 
 == Changelog ==
+
+= 1.0.2 =
+* Güvenlik: JSON-LD çıktısında </script> kaçışı engellendi
+* Güvenlik: API key artık ayar formuna geri basılmıyor (maskeli gösterim, boşsa mevcut korunur)
+* Güvenlik: özel model adı güvenli karakter setiyle, dil seçimi beyaz listeyle sınırlandı
+* Update URI başlığı ve dizinlere index.php koruması eklendi
 
 = 1.0.1 =
 * Varsayılan model gemini-2.5-flash yapıldı (gemini-2.0-flash'ın ücretsiz katman kotası Google tarafından kaldırıldı)

@@ -106,15 +106,30 @@ class WPWix_SEO_Admin {
 
 		check_admin_referer( 'wpwix_save_settings', 'wpwix_settings_nonce' );
 
-		$allowed_models = array( 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash' );
-		$model          = sanitize_text_field( wp_unslash( $_POST['model'] ?? '' ) );
+		$current = wpwix_get_settings();
+
+		$allowed_models    = array( 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash' );
+		$allowed_languages = array( 'tr', 'en', 'de', 'fr', 'es', 'ar', 'ru' );
+		$model             = sanitize_text_field( wp_unslash( $_POST['model'] ?? '' ) );
+		$language          = sanitize_text_field( wp_unslash( $_POST['language'] ?? 'tr' ) );
+
+		// Key alanı boş gönderilirse mevcut key korunur (key forma geri basılmaz).
+		$posted_key = sanitize_text_field( wp_unslash( $_POST['api_key'] ?? '' ) );
+		if ( ! empty( $_POST['wpwix_remove_key'] ) ) {
+			$posted_key = '';
+		} elseif ( '' === $posted_key ) {
+			$posted_key = $current['api_key'];
+		}
+
+		// Özel model adı: API URL'sine girdiği için güvenli karakter setiyle sınırlanır.
+		$custom_model = preg_replace( '/[^a-zA-Z0-9._\-]/', '', sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ) );
 
 		$clean = array(
-			'api_key'         => sanitize_text_field( wp_unslash( $_POST['api_key'] ?? '' ) ),
+			'api_key'         => $posted_key,
 			'model'           => in_array( $model, $allowed_models, true ) ? $model : 'gemini-2.5-flash',
-			'custom_model'    => sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ),
+			'custom_model'    => $custom_model,
 			'brand_tone'      => sanitize_textarea_field( wp_unslash( $_POST['brand_tone'] ?? '' ) ),
-			'language'        => sanitize_text_field( wp_unslash( $_POST['language'] ?? 'tr' ) ),
+			'language'        => in_array( $language, $allowed_languages, true ) ? $language : 'tr',
 			'title_template'  => sanitize_text_field( wp_unslash( $_POST['title_template'] ?? '%urun_adi% | %site_adi%' ) ),
 			'auto_on_publish' => ! empty( $_POST['auto_on_publish'] ),
 			'request_delay'   => min( 60, max( 0, absint( $_POST['request_delay'] ?? 2 ) ) ),
@@ -174,11 +189,21 @@ class WPWix_SEO_Admin {
 					<tr>
 						<th scope="row"><label for="wpwix-api-key"><?php esc_html_e( 'Gemini API Key', 'wpwix-seo' ); ?></label></th>
 						<td>
-							<input type="password" id="wpwix-api-key" name="api_key" class="regular-text" value="<?php echo esc_attr( $settings['api_key'] ); ?>" autocomplete="off" />
+							<?php
+							// Güvenlik: kayıtlı key forma/HTML kaynağına asla geri basılmaz.
+							$has_key     = '' !== $settings['api_key'];
+							$placeholder = $has_key
+								? str_repeat( '•', 12 ) . substr( $settings['api_key'], -4 )
+								: __( 'API key girin', 'wpwix-seo' );
+							?>
+							<input type="password" id="wpwix-api-key" name="api_key" class="regular-text" value="" placeholder="<?php echo esc_attr( $placeholder ); ?>" autocomplete="new-password" />
 							<button type="button" class="button" id="wpwix-test-connection"><?php esc_html_e( 'Bağlantıyı Test Et', 'wpwix-seo' ); ?></button>
 							<span id="wpwix-test-result"></span>
 							<p class="description">
 								<?php
+								if ( $has_key ) {
+									esc_html_e( 'Bir key kayıtlı. Değiştirmek için yeni key girin; boş bırakırsanız mevcut key korunur. ', 'wpwix-seo' );
+								}
 								printf(
 									/* translators: %s: Google AI Studio link */
 									esc_html__( 'Key almak için: %s (ücretsiz katman mevcuttur).', 'wpwix-seo' ),
@@ -186,6 +211,12 @@ class WPWix_SEO_Admin {
 								);
 								?>
 							</p>
+							<?php if ( $has_key ) : ?>
+								<label>
+									<input type="checkbox" name="wpwix_remove_key" value="1" />
+									<?php esc_html_e( 'Kayıtlı key\'i sil', 'wpwix-seo' ); ?>
+								</label>
+							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>
