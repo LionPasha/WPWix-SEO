@@ -143,6 +143,57 @@
 	} );
 
 	/* ------------------------------------------------------------------
+	 * "AI ile Açıklama Yaz" butonu (metabox) — editöre yerleştirir,
+	 * kullanıcı kontrol edip kendisi kaydeder.
+	 * ---------------------------------------------------------------- */
+	function setEditorContent( html ) {
+		if ( window.tinyMCE && tinyMCE.get( 'content' ) && ! tinyMCE.get( 'content' ).isHidden() ) {
+			tinyMCE.get( 'content' ).setContent( html );
+			return true;
+		}
+		var textarea = document.getElementById( 'content' );
+		if ( textarea ) {
+			textarea.value = html;
+			return true;
+		}
+		return false;
+	}
+
+	document.querySelectorAll( '.wpwix-generate-desc' ).forEach( function ( btn ) {
+		btn.addEventListener( 'click', function () {
+			var status = btn.parentNode.querySelector( '.wpwix-generate-status' );
+			btn.disabled = true;
+			if ( status ) {
+				status.textContent = wpwixSeo.i18n.generating;
+				status.className = 'wpwix-generate-status';
+			}
+
+			post( 'wpwix_generate_description', { product_id: btn.dataset.product } )
+				.then( function ( res ) {
+					if ( ! res.success ) {
+						throw ( res.data && res.data.message ) || '';
+					}
+					if ( ! setEditorContent( res.data.description ) ) {
+						throw 'editor not found';
+					}
+					if ( status ) {
+						status.textContent = wpwixSeo.i18n.descReady;
+						status.className = 'wpwix-generate-status wpwix-ok';
+					}
+				} )
+				.catch( function ( err ) {
+					if ( status ) {
+						status.textContent = wpwixSeo.i18n.error + err;
+						status.className = 'wpwix-generate-status wpwix-err';
+					}
+				} )
+				.finally( function () {
+					btn.disabled = false;
+				} );
+		} );
+	} );
+
+	/* ------------------------------------------------------------------
 	 * Toplu işlemler: tara, üret (progress + durdur/devam)
 	 * ---------------------------------------------------------------- */
 	var scanBtn  = document.getElementById( 'wpwix-bulk-scan' );
@@ -218,7 +269,8 @@
 
 		scanBtn.addEventListener( 'click', function () {
 			scanBtn.disabled = true;
-			post( 'wpwix_bulk_scan', {} ).then( function ( res ) {
+			var contentBox = document.getElementById( 'wpwix-bulk-content' );
+			post( 'wpwix_bulk_scan', { with_content: contentBox && contentBox.checked ? 1 : 0 } ).then( function ( res ) {
 				if ( res.success ) {
 					message.textContent = res.data.message;
 					startBtn.disabled = res.data.count === 0;

@@ -19,6 +19,7 @@ class WPWix_SEO_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_wpwix_test_connection', array( __CLASS__, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_wpwix_generate_single', array( __CLASS__, 'ajax_generate_single' ) );
+		add_action( 'wp_ajax_wpwix_generate_description', array( __CLASS__, 'ajax_generate_description' ) );
 
 		// Metabox.
 		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metabox' ) );
@@ -84,6 +85,7 @@ class WPWix_SEO_Admin {
 					'testOk'     => __( 'Bağlantı başarılı ✅', 'wpwix-seo' ),
 					'generating' => __( 'AI üretiyor…', 'wpwix-seo' ),
 					'generated'  => __( 'Üretildi ve kaydedildi ✅', 'wpwix-seo' ),
+					'descReady'  => __( 'Açıklama editöre eklendi — kontrol edip Güncelle\'ye basın ✅', 'wpwix-seo' ),
 					'error'      => __( 'Hata: ', 'wpwix-seo' ),
 					'done'       => __( 'Tamamlandı', 'wpwix-seo' ),
 					'stopped'    => __( 'Durduruldu — kaldığı yerden devam edebilirsiniz.', 'wpwix-seo' ),
@@ -336,6 +338,30 @@ class WPWix_SEO_Admin {
 		);
 	}
 
+	/**
+	 * AJAX: ürün açıklamasını AI ile yazar. Kaydetmez — HTML'i döndürür,
+	 * JS editöre yerleştirir; kullanıcı kontrol edip kendisi kaydeder.
+	 */
+	public static function ajax_generate_description() {
+		check_ajax_referer( 'wpwix_seo_admin', 'nonce' );
+
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error( array( 'message' => __( 'Yetkiniz yok.', 'wpwix-seo' ) ) );
+		}
+
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		if ( ! $product_id || 'product' !== get_post_type( $product_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Geçersiz ürün.', 'wpwix-seo' ) ) );
+		}
+
+		$html = WPWix_SEO_Gemini::generate_description( $product_id );
+		if ( is_wp_error( $html ) ) {
+			wp_send_json_error( array( 'message' => $html->get_error_message() ) );
+		}
+
+		wp_send_json_success( array( 'description' => $html ) );
+	}
+
 	/* ------------------------------------------------------------------
 	 * Metabox
 	 * ---------------------------------------------------------------- */
@@ -378,8 +404,12 @@ class WPWix_SEO_Admin {
 				<button type="button" class="button button-primary wpwix-generate" data-product="<?php echo esc_attr( $post->ID ); ?>">
 					✨ <?php esc_html_e( 'AI ile Doldur', 'wpwix-seo' ); ?>
 				</button>
+				<button type="button" class="button wpwix-generate-desc" data-product="<?php echo esc_attr( $post->ID ); ?>">
+					📝 <?php esc_html_e( 'AI ile Açıklama Yaz', 'wpwix-seo' ); ?>
+				</button>
 				<span class="wpwix-generate-status"></span>
 			</p>
+			<p class="description"><?php esc_html_e( '"AI ile Açıklama Yaz": odak kelimeyi içeren, 150+ kelimelik ve iç bağlantılı bir ürün açıklaması üretir ve editöre yerleştirir — kontrol edip Güncelle\'ye basmadan kaydedilmez.', 'wpwix-seo' ); ?></p>
 
 			<div class="wpwix-snippet">
 				<span class="wpwix-snippet-label"><?php esc_html_e( 'Google önizleme', 'wpwix-seo' ); ?></span>

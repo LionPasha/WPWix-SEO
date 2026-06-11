@@ -4,7 +4,7 @@ Tags: seo, woocommerce, ai, schema, open graph
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,10 @@ Analiz ve skor:
 2. Eklentiyi WordPress yönetim panelinden etkinleştirin (WooCommerce kurulu olmalıdır).
 
 == Changelog ==
+
+= 1.1.0 =
+* Yeni: "AI ile Açıklama Yaz" — odak kelimeli, 150+ kelimelik, iç bağlantılı ürün açıklaması üretir (editöre yerleştirir, onayla kaydedilir)
+* Yeni: Toplu üretimde isteğe bağlı içerik yazımı — açıklaması 150 kelimeden kısa ürünlerde açıklama da otomatik üretilir
 
 = 1.0.2 =
 * Güvenlik: JSON-LD çıktısında </script> kaçışı engellendi

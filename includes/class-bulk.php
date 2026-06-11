@@ -83,6 +83,13 @@ class WPWix_SEO_Bulk {
 
 			<h2><?php esc_html_e( 'Toplu AI Üretimi', 'wpwix-seo' ); ?></h2>
 			<p>
+				<label>
+					<input type="checkbox" id="wpwix-bulk-content" <?php checked( ! empty( $state['with_content'] ) ); ?> />
+					<?php esc_html_e( 'Açıklaması 150 kelimeden kısa ürünlerde ürün açıklamasını da AI ile yaz', 'wpwix-seo' ); ?>
+				</label>
+				<span class="description"><?php esc_html_e( '(mevcut kısa açıklamanın üzerine yazılır; 150+ kelimelik açıklamalara dokunulmaz)', 'wpwix-seo' ); ?></span>
+			</p>
+			<p>
 				<button type="button" class="button" id="wpwix-bulk-scan"><?php esc_html_e( 'Eksikleri Tara', 'wpwix-seo' ); ?></button>
 				<button type="button" class="button button-primary" id="wpwix-bulk-start" <?php disabled( 0 === $queued ); ?>>
 					<?php echo esc_html( $state['done'] > 0 && $queued > 0 ? __( 'Devam Et', 'wpwix-seo' ) : __( 'Tümünü Üret', 'wpwix-seo' ) ); ?>
@@ -204,11 +211,12 @@ class WPWix_SEO_Bulk {
 		return wp_parse_args(
 			is_array( $state ) ? $state : array(),
 			array(
-				'queue'   => array(),
-				'total'   => 0,
-				'done'    => 0,
-				'success' => 0,
-				'errors'  => array(),
+				'queue'        => array(),
+				'total'        => 0,
+				'done'         => 0,
+				'success'      => 0,
+				'errors'       => array(),
+				'with_content' => false,
 			)
 		);
 	}
@@ -265,11 +273,12 @@ class WPWix_SEO_Bulk {
 
 		self::save_state(
 			array(
-				'queue'   => array_map( 'intval', $ids ),
-				'total'   => count( $ids ),
-				'done'    => 0,
-				'success' => 0,
-				'errors'  => array(),
+				'queue'        => array_map( 'intval', $ids ),
+				'total'        => count( $ids ),
+				'done'         => 0,
+				'success'      => 0,
+				'errors'       => array(),
+				'with_content' => ! empty( $_POST['with_content'] ),
 			)
 		);
 
@@ -310,6 +319,24 @@ class WPWix_SEO_Bulk {
 			$state['errors'][ $product_id ] = $data->get_error_message();
 		} else {
 			WPWix_SEO_Gemini::apply_to_product( $product_id, $data );
+
+			// İsteğe bağlı: kısa açıklamalı ürünlerde içeriği de üret.
+			if ( ! empty( $state['with_content'] ) ) {
+				$product = wc_get_product( $product_id );
+				if ( $product && WPWix_SEO_Analyzer::word_count( $product->get_description() ) < 150 ) {
+					$html = WPWix_SEO_Gemini::generate_description( $product_id );
+					if ( is_wp_error( $html ) ) {
+						$state['errors'][ $product_id ] = sprintf(
+							/* translators: %s: error message */
+							__( 'Meta üretildi ama açıklama yazılamadı: %s', 'wpwix-seo' ),
+							$html->get_error_message()
+						);
+					} else {
+						WPWix_SEO_Gemini::apply_description( $product_id, $html );
+					}
+				}
+			}
+
 			$state['success']++;
 		}
 

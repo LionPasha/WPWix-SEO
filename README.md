@@ -24,6 +24,7 @@
 - **Toplu üretim:** "Eksikleri Tara" → tek tıkla tüm ürünlere başlık + açıklama + odak kelime + görsel alt metni. Progress bar, durdur/devam, kaldığı yerden sürdürme. Hata alan ürün atlanır, sonda raporlanır.
 - **Yeni ürün otomasyonu (opsiyonel):** Ürün yayınlandığında WP-Cron ile arka planda otomatik üretim.
 - **Metabox "AI ile Doldur" butonu:** Tek ürün için manuel tetikleme.
+- **AI ile açıklama yazma:** Odak kelimeyi içeren, 150+ kelimelik, iç bağlantılı ürün açıklaması üretir. Metabox'ta editöre yerleştirir (onayınla kaydedilir); toplu üretimde isteğe bağlı olarak kısa açıklamalı ürünlere otomatik uygulanır.
 - **JSON çıktı garantisi:** Gemini'nin `responseSchema` özelliği sayesinde her zaman geçerli JSON döner.
 - **Ücretsiz katman koruması:** Ayarlanabilir istek aralığı (varsayılan 2 sn) + 429'da exponential backoff.
 

@@ -94,7 +94,7 @@ class WPWix_SEO_Analyzer {
 
 		$title_len = mb_strlen( $title );
 		$desc_len  = mb_strlen( $desc );
-		$words     = '' === $content_text ? 0 : count( preg_split( '/\s+/u', $content_text ) );
+		$words     = self::word_count( $content_text );
 
 		$thumb_id  = $product->get_image_id();
 		$thumb_alt = $thumb_id ? (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) : '';
@@ -129,6 +129,18 @@ class WPWix_SEO_Analyzer {
 			'score'  => $score,
 			'checks' => $checks,
 		);
+	}
+
+	/**
+	 * HTML/shortcode'dan arındırılmış kelime sayısı.
+	 *
+	 * @param string $text Ham veya temizlenmiş metin.
+	 * @return int
+	 */
+	public static function word_count( $text ) {
+		$text = trim( wp_strip_all_tags( strip_shortcodes( (string) $text ) ) );
+
+		return '' === $text ? 0 : count( preg_split( '/\s+/u', $text ) );
 	}
 
 	/**

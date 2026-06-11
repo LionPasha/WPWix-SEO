@@ -157,6 +157,108 @@ class WPWix_SEO_Gemini {
 	}
 
 	/**
+	 * Ürün açıklamasını AI ile yazar/genişletir: 180-250 kelime, odak kelime
+	 * içinde, sonuna iç bağlantı (ilk kategori) eklenir.
+	 *
+	 * Kaydetmez; üretilen HTML'i döndürür. Kaydetmek için apply_description().
+	 *
+	 * @param int $product_id Ürün ID.
+	 * @return string|WP_Error wp_kses_post'tan geçmiş HTML.
+	 */
+	public static function generate_description( $product_id ) {
+		if ( ! self::is_configured() ) {
+			return new WP_Error( 'wpwix_no_key', __( 'Gemini API key girilmemiş. Ayarlar sayfasından key ekleyin.', 'wpwix-seo' ) );
+		}
+
+		$product = wc_get_product( $product_id );
+		if ( ! $product ) {
+			return new WP_Error( 'wpwix_no_product', __( 'Ürün bulunamadı.', 'wpwix-seo' ) );
+		}
+
+		$settings = wpwix_get_settings();
+		$focus_kw = trim( (string) get_post_meta( $product_id, '_wpwixseo_focus_kw', true ) );
+
+		$task = 'Aşağıdaki ürün için 180-250 kelimelik bir ürün açıklaması yaz.'
+			. "\nKurallar:"
+			. "\n- Sadece şu HTML etiketlerini kullan: <p>, <h3>, <ul>, <li>, <strong>."
+			. "\n- Mevcut açıklama varsa onu temel al ve genişlet; bilgi uydurma, ürün bilgilerinde olmayan teknik iddia ekleme."
+			. "\n- Satış odaklı ama doğal bir dil kullan; anahtar kelime yığması yapma.";
+		if ( '' !== $focus_kw ) {
+			$task .= "\n- \"" . $focus_kw . '" ifadesi metinde doğal biçimde en az 2 kez geçsin.';
+		}
+
+		$payload = array(
+			'systemInstruction' => array(
+				'parts' => array( array( 'text' => self::build_system_instruction( $settings ) ) ),
+			),
+			'contents'          => array(
+				array(
+					'role'  => 'user',
+					'parts' => array( array( 'text' => $task . "\n\n" . self::build_product_prompt( $product ) ) ),
+				),
+			),
+			'generationConfig'  => array(
+				'responseMimeType' => 'application/json',
+				'responseSchema'   => array(
+					'type'       => 'OBJECT',
+					'properties' => array(
+						'description_html' => array( 'type' => 'STRING' ),
+					),
+					'required'   => array( 'description_html' ),
+				),
+				'temperature'      => 0.7,
+			),
+		);
+
+		$body = self::request( $payload );
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+
+		$text = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+		$data = json_decode( $text, true );
+
+		if ( ! is_array( $data ) || empty( $data['description_html'] ) ) {
+			return new WP_Error( 'wpwix_bad_response', __( 'Gemini geçerli bir yanıt döndürmedi.', 'wpwix-seo' ) );
+		}
+
+		// AI çıktısı kaydedilmeden önce izinli HTML'e indirgenir.
+		$html = wp_kses_post( $data['description_html'] );
+
+		// İç bağlantı garantisi: ilk kategoriye link eklenir.
+		$terms = get_the_terms( $product_id, 'product_cat' );
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			$link = get_term_link( $terms[0], 'product_cat' );
+			if ( ! is_wp_error( $link ) ) {
+				$html .= "\n<p>" . sprintf(
+					/* translators: 1: category URL, 2: category name */
+					__( 'Benzer ürünler için <a href="%1$s">%2$s</a> kategorimize göz atabilirsiniz.', 'wpwix-seo' ),
+					esc_url( $link ),
+					esc_html( $terms[0]->name )
+				) . '</p>';
+			}
+		}
+
+		return $html;
+	}
+
+	/**
+	 * Üretilen açıklamayı ürüne kaydeder (save_post_product tetiklenir,
+	 * skor otomatik yeniden hesaplanır).
+	 *
+	 * @param int    $product_id Ürün ID.
+	 * @param string $html       generate_description() çıktısı.
+	 */
+	public static function apply_description( $product_id, $html ) {
+		wp_update_post(
+			array(
+				'ID'           => $product_id,
+				'post_content' => wp_slash( $html ),
+			)
+		);
+	}
+
+	/**
 	 * Sistem talimatı: SEO uzmanı rolü + marka tonu + dil + uzunluk kuralları.
 	 *
 	 * @param array $settings Eklenti ayarları.
