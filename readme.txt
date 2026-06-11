@@ -4,7 +4,7 @@ Tags: seo, woocommerce, ai, schema, open graph
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -27,7 +27,7 @@ AI özellikleri (Google Gemini):
 * Toplu üretim: eksikleri tara, tek tıkla hepsine başlık + açıklama + odak kelime + görsel alt metni (progress bar, durdur/devam)
 * Yeni ürün yayınlandığında WP-Cron ile otomatik üretim (opsiyonel)
 * Ürün metabox'ında "AI ile Doldur" butonu
-* Model seçimi: gemini-2.0-flash / 2.5-flash / 2.5-pro veya özel model adı
+* Model seçimi: gemini-2.5-flash / 2.5-flash-lite / 2.5-pro veya özel model adı
 
 Analiz ve skor:
 
@@ -42,6 +42,10 @@ Analiz ve skor:
 2. Eklentiyi WordPress yönetim panelinden etkinleştirin (WooCommerce kurulu olmalıdır).
 
 == Changelog ==
+
+= 1.0.1 =
+* Varsayılan model gemini-2.5-flash yapıldı (gemini-2.0-flash'ın ücretsiz katman kotası Google tarafından kaldırıldı)
+* Model listesine gemini-2.5-flash-lite eklendi
 
 = 1.0.0 =
 * XML sitemap (/sitemap.xml, transient cache, robots.txt entegrasyonu)

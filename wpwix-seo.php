@@ -3,7 +3,7 @@
  * Plugin Name:       WPWix SEO
  * Plugin URI:        https://wpwix.com
  * Description:       Hızlı ve AI destekli WooCommerce SEO. Meta etiketler, Open Graph, JSON-LD ve sitemap — frontend'e sıfır CSS/JS yüküyle.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Ahmet YÜRÜK
  * Author URI:        https://wpwix.com
  * Text Domain:       wpwix-seo
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WPWIX_SEO_VERSION', '1.0.0' );
+define( 'WPWIX_SEO_VERSION', '1.0.1' );
 define( 'WPWIX_SEO_FILE', __FILE__ );
 define( 'WPWIX_SEO_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -54,7 +54,7 @@ function wpwix_get_settings() {
 
 	$defaults = array(
 		'api_key'         => '',
-		'model'           => 'gemini-2.0-flash',
+		'model'           => 'gemini-2.5-flash',
 		'custom_model'    => '',
 		'brand_tone'      => '',
 		'language'        => 'tr',

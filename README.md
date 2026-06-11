@@ -55,9 +55,10 @@ Skor sadece bilgilendirir; hiçbir şeyi engellemez veya zorlamaz.
 
 | Model | Kullanım |
 |---|---|
-| `gemini-2.0-flash` | Hızlı, ücretsiz katmanda cömert limit — toplu üretim için varsayılan |
-| `gemini-2.5-flash` | Daha kaliteli |
+| `gemini-2.5-flash` | Dengeli — toplu üretim için varsayılan |
+| `gemini-2.5-flash-lite` | En hızlı, ücretsiz katmanda en cömert limit |
 | `gemini-2.5-pro` | En kaliteli — önemli ürünler / manuel kullanım |
+| `gemini-2.0-flash` | Eski model — ücretsiz katman kotası kaldırıldı (`limit: 0` hatası verir) |
 | Özel model | Yeni modelleri güncelleme beklemeden kullanın |
 
 ## Teknik notlar

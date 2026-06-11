@@ -106,12 +106,12 @@ class WPWix_SEO_Admin {
 
 		check_admin_referer( 'wpwix_save_settings', 'wpwix_settings_nonce' );
 
-		$allowed_models = array( 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro' );
+		$allowed_models = array( 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash' );
 		$model          = sanitize_text_field( wp_unslash( $_POST['model'] ?? '' ) );
 
 		$clean = array(
 			'api_key'         => sanitize_text_field( wp_unslash( $_POST['api_key'] ?? '' ) ),
-			'model'           => in_array( $model, $allowed_models, true ) ? $model : 'gemini-2.0-flash',
+			'model'           => in_array( $model, $allowed_models, true ) ? $model : 'gemini-2.5-flash',
 			'custom_model'    => sanitize_text_field( wp_unslash( $_POST['custom_model'] ?? '' ) ),
 			'brand_tone'      => sanitize_textarea_field( wp_unslash( $_POST['brand_tone'] ?? '' ) ),
 			'language'        => sanitize_text_field( wp_unslash( $_POST['language'] ?? 'tr' ) ),
@@ -149,9 +149,10 @@ class WPWix_SEO_Admin {
 
 		$settings = wpwix_get_settings();
 		$models   = array(
-			'gemini-2.0-flash' => __( 'Gemini 2.0 Flash — hızlı, toplu üretim için (varsayılan)', 'wpwix-seo' ),
-			'gemini-2.5-flash' => __( 'Gemini 2.5 Flash — daha kaliteli', 'wpwix-seo' ),
-			'gemini-2.5-pro'   => __( 'Gemini 2.5 Pro — en kaliteli', 'wpwix-seo' ),
+			'gemini-2.5-flash'      => __( 'Gemini 2.5 Flash — dengeli, toplu üretim için (varsayılan)', 'wpwix-seo' ),
+			'gemini-2.5-flash-lite' => __( 'Gemini 2.5 Flash-Lite — en hızlı, ücretsiz katmanda en cömert limit', 'wpwix-seo' ),
+			'gemini-2.5-pro'        => __( 'Gemini 2.5 Pro — en kaliteli', 'wpwix-seo' ),
+			'gemini-2.0-flash'      => __( 'Gemini 2.0 Flash — eski model (ücretsiz katman kotası kaldırıldı)', 'wpwix-seo' ),
 		);
 		$languages = array(
 			'tr' => 'Türkçe',
