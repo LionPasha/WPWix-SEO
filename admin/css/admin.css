@@ -38,3 +38,32 @@
 .wpwix-analysis { margin-top: 16px; border-top: 1px solid #dcdcde; padding-top: 12px; }
 .wpwix-checklist { margin: 10px 0 0; }
 .wpwix-checklist li { margin: 4px 0; }
+
+/* Toplu işlemler */
+.wpwix-dist { display: flex; gap: 24px; margin: 12px 0 24px; font-size: 15px; }
+.wpwix-dist-item strong { font-size: 18px; }
+
+.wpwix-progress {
+	position: relative;
+	max-width: 600px;
+	height: 28px;
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 14px;
+	overflow: hidden;
+	margin: 12px 0;
+}
+.wpwix-progress-bar {
+	height: 100%;
+	background: #2271b1;
+	transition: width .3s ease;
+}
+.wpwix-progress-text {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 600;
+	color: #1d2327;
+}

@@ -141,4 +141,109 @@
 				} );
 		} );
 	} );
+
+	/* ------------------------------------------------------------------
+	 * Toplu işlemler: tara, üret (progress + durdur/devam)
+	 * ---------------------------------------------------------------- */
+	var scanBtn  = document.getElementById( 'wpwix-bulk-scan' );
+	var startBtn = document.getElementById( 'wpwix-bulk-start' );
+	var stopBtn  = document.getElementById( 'wpwix-bulk-stop' );
+
+	if ( scanBtn && startBtn && stopBtn ) {
+		var message  = document.getElementById( 'wpwix-bulk-message' );
+		var progress = document.getElementById( 'wpwix-bulk-progress' );
+		var bar      = document.getElementById( 'wpwix-bulk-bar' );
+		var barText  = document.getElementById( 'wpwix-bulk-text' );
+		var report   = document.getElementById( 'wpwix-bulk-report' );
+		var running  = false;
+
+		function renderProgress( data ) {
+			progress.style.display = 'block';
+			var pct = data.total > 0 ? Math.round( ( data.done / data.total ) * 100 ) : 0;
+			bar.style.width = pct + '%';
+			barText.textContent = data.done + '/' + data.total + ( data.current ? ' — ' + data.current : '' );
+		}
+
+		function renderReport( data ) {
+			var errors = Object.keys( data.errors || {} ).length;
+			var text = wpwixSeo.i18n.done + ': ' + data.success + ' ✅';
+			if ( errors > 0 ) {
+				text += ' / ' + errors + ' ❌';
+			}
+			report.innerHTML = '';
+			var p = document.createElement( 'p' );
+			p.innerHTML = '<strong>' + text + '</strong>';
+			report.appendChild( p );
+
+			if ( errors > 0 ) {
+				var list = document.createElement( 'ul' );
+				Object.keys( data.errors ).forEach( function ( id ) {
+					var li = document.createElement( 'li' );
+					li.textContent = '#' + id + ': ' + data.errors[ id ];
+					list.appendChild( li );
+				} );
+				report.appendChild( list );
+			}
+		}
+
+		function step() {
+			if ( ! running ) {
+				return;
+			}
+
+			post( 'wpwix_bulk_step', {} ).then( function ( res ) {
+				if ( ! res.success ) {
+					throw ( res.data && res.data.message ) || '';
+				}
+
+				renderProgress( res.data );
+
+				if ( res.data.finished ) {
+					running = false;
+					stopBtn.style.display = 'none';
+					startBtn.disabled = true;
+					renderReport( res.data );
+					return;
+				}
+
+				// Ücretsiz katman koruması: istekler arası bekleme.
+				window.setTimeout( step, Math.max( 0, wpwixSeo.requestDelay ) * 1000 );
+			} ).catch( function ( err ) {
+				running = false;
+				stopBtn.style.display = 'none';
+				startBtn.disabled = false;
+				message.textContent = wpwixSeo.i18n.error + err;
+			} );
+		}
+
+		scanBtn.addEventListener( 'click', function () {
+			scanBtn.disabled = true;
+			post( 'wpwix_bulk_scan', {} ).then( function ( res ) {
+				if ( res.success ) {
+					message.textContent = res.data.message;
+					startBtn.disabled = res.data.count === 0;
+					progress.style.display = 'none';
+					report.innerHTML = '';
+				}
+			} ).finally( function () {
+				scanBtn.disabled = false;
+			} );
+		} );
+
+		startBtn.addEventListener( 'click', function () {
+			running = true;
+			startBtn.disabled = true;
+			stopBtn.style.display = '';
+			report.innerHTML = '';
+			step();
+		} );
+
+		stopBtn.addEventListener( 'click', function () {
+			running = false;
+			stopBtn.style.display = 'none';
+			startBtn.disabled = false;
+			startBtn.textContent = startBtn.textContent.trim();
+			message.textContent = wpwixSeo.i18n.stopped;
+		} );
+	}
 } )();
