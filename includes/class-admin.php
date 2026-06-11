@@ -18,6 +18,17 @@ class WPWix_SEO_Admin {
 		add_action( 'admin_init', array( __CLASS__, 'maybe_save_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_wpwix_test_connection', array( __CLASS__, 'ajax_test_connection' ) );
+		add_action( 'wp_ajax_wpwix_generate_single', array( __CLASS__, 'ajax_generate_single' ) );
+
+		// Metabox.
+		add_action( 'add_meta_boxes', array( __CLASS__, 'register_metabox' ) );
+		add_action( 'save_post_product', array( __CLASS__, 'save_metabox' ), 10, 2 );
+
+		// Ürün listesi skor sütunu.
+		add_filter( 'manage_edit-product_columns', array( __CLASS__, 'add_score_column' ), 20 );
+		add_action( 'manage_product_posts_custom_column', array( __CLASS__, 'render_score_column' ), 10, 2 );
+		add_filter( 'manage_edit-product_sortable_columns', array( __CLASS__, 'make_score_sortable' ) );
+		add_action( 'pre_get_posts', array( __CLASS__, 'sort_by_score' ) );
 	}
 
 	public static function register_menu() {
@@ -261,5 +272,250 @@ class WPWix_SEO_Admin {
 		}
 
 		wp_send_json_success();
+	}
+
+	/**
+	 * AJAX: tek ürün için AI üretimi (metabox butonu ve "AI ile Düzelt").
+	 */
+	public static function ajax_generate_single() {
+		check_ajax_referer( 'wpwix_seo_admin', 'nonce' );
+
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_send_json_error( array( 'message' => __( 'Yetkiniz yok.', 'wpwix-seo' ) ) );
+		}
+
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		if ( ! $product_id || 'product' !== get_post_type( $product_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Geçersiz ürün.', 'wpwix-seo' ) ) );
+		}
+
+		$data = WPWix_SEO_Gemini::generate_for_product( $product_id );
+		if ( is_wp_error( $data ) ) {
+			wp_send_json_error( array( 'message' => $data->get_error_message() ) );
+		}
+
+		WPWix_SEO_Gemini::apply_to_product( $product_id, $data );
+
+		wp_send_json_success(
+			array(
+				'fields' => $data,
+				'score'  => (int) get_post_meta( $product_id, '_wpwixseo_score', true ),
+			)
+		);
+	}
+
+	/* ------------------------------------------------------------------
+	 * Metabox
+	 * ---------------------------------------------------------------- */
+
+	public static function register_metabox() {
+		add_meta_box(
+			'wpwix-seo-metabox',
+			'WPWix SEO',
+			array( __CLASS__, 'render_metabox' ),
+			'product',
+			'normal',
+			'default'
+		);
+	}
+
+	/**
+	 * Metabox: alanlar, snippet önizleme, sayaçlar, skor + kontrol listesi, AI butonu.
+	 *
+	 * @param WP_Post $post Ürün.
+	 */
+	public static function render_metabox( $post ) {
+		wp_nonce_field( 'wpwix_save_meta', 'wpwix_meta_nonce' );
+
+		$title    = get_post_meta( $post->ID, '_wpwixseo_title', true );
+		$desc     = get_post_meta( $post->ID, '_wpwixseo_desc', true );
+		$focus_kw = get_post_meta( $post->ID, '_wpwixseo_focus_kw', true );
+		$alt      = get_post_meta( $post->ID, '_wpwixseo_alt', true );
+		$noindex  = get_post_meta( $post->ID, '_wpwixseo_noindex', true );
+
+		$analysis = WPWix_SEO_Analyzer::calculate( $post->ID );
+		$labels   = WPWix_SEO_Analyzer::get_labels();
+
+		$settings      = wpwix_get_settings();
+		$preview_title = '' !== $title
+			? $title
+			: str_replace( array( '%urun_adi%', '%site_adi%' ), array( get_the_title( $post ), get_bloginfo( 'name' ) ), $settings['title_template'] );
+		?>
+		<div class="wpwix-metabox">
+			<p class="wpwix-ai-row">
+				<button type="button" class="button button-primary wpwix-generate" data-product="<?php echo esc_attr( $post->ID ); ?>">
+					✨ <?php esc_html_e( 'AI ile Doldur', 'wpwix-seo' ); ?>
+				</button>
+				<span class="wpwix-generate-status"></span>
+			</p>
+
+			<div class="wpwix-snippet">
+				<span class="wpwix-snippet-label"><?php esc_html_e( 'Google önizleme', 'wpwix-seo' ); ?></span>
+				<div class="wpwix-snippet-title" id="wpwix-preview-title"><?php echo esc_html( $preview_title ); ?></div>
+				<div class="wpwix-snippet-url"><?php echo esc_url( get_permalink( $post ) ); ?></div>
+				<div class="wpwix-snippet-desc" id="wpwix-preview-desc"><?php echo esc_html( $desc ); ?></div>
+			</div>
+
+			<p>
+				<label for="wpwix-field-title"><strong><?php esc_html_e( 'SEO Title', 'wpwix-seo' ); ?></strong>
+					<span class="wpwix-counter" data-for="wpwix-field-title" data-max="60"><?php echo esc_html( mb_strlen( $title ) ); ?>/60</span>
+				</label>
+				<input type="text" id="wpwix-field-title" name="wpwix_title" class="large-text" value="<?php echo esc_attr( $title ); ?>" />
+			</p>
+			<p>
+				<label for="wpwix-field-desc"><strong><?php esc_html_e( 'Meta Description', 'wpwix-seo' ); ?></strong>
+					<span class="wpwix-counter" data-for="wpwix-field-desc" data-max="155"><?php echo esc_html( mb_strlen( $desc ) ); ?>/155</span>
+				</label>
+				<textarea id="wpwix-field-desc" name="wpwix_desc" class="large-text" rows="3"><?php echo esc_textarea( $desc ); ?></textarea>
+			</p>
+			<p>
+				<label for="wpwix-field-kw"><strong><?php esc_html_e( 'Odak Kelime', 'wpwix-seo' ); ?></strong></label>
+				<input type="text" id="wpwix-field-kw" name="wpwix_focus_kw" class="large-text" value="<?php echo esc_attr( $focus_kw ); ?>" />
+			</p>
+			<p>
+				<label for="wpwix-field-alt"><strong><?php esc_html_e( 'Görsel Alt Metni', 'wpwix-seo' ); ?></strong></label>
+				<input type="text" id="wpwix-field-alt" name="wpwix_alt" class="large-text" value="<?php echo esc_attr( $alt ); ?>" />
+			</p>
+			<p>
+				<label>
+					<input type="checkbox" name="wpwix_noindex" value="1" <?php checked( $noindex ); ?> />
+					<?php esc_html_e( 'Bu ürünü arama motorlarından gizle (noindex)', 'wpwix-seo' ); ?>
+				</label>
+			</p>
+
+			<div class="wpwix-analysis">
+				<div class="wpwix-score-badge <?php echo esc_attr( WPWix_SEO_Analyzer::get_color_class( $analysis['score'] ) ); ?>" id="wpwix-score-badge">
+					<?php echo esc_html( $analysis['score'] ); ?>/100
+				</div>
+				<ul class="wpwix-checklist">
+					<?php foreach ( $labels as $key => $label ) : ?>
+						<li><?php echo esc_html( ( ! empty( $analysis['checks'][ $key ] ) ? '✅ ' : '❌ ' ) . $label ); ?></li>
+					<?php endforeach; ?>
+				</ul>
+				<p class="description"><?php esc_html_e( 'Skor, ürün kaydedildiğinde güncellenir. Sadece bilgilendirir; hiçbir şeyi engellemez.', 'wpwix-seo' ); ?></p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Metabox alanlarını kaydeder. Boş alanların meta'sı silinir (plan: boşsa kaydedilmez).
+	 *
+	 * @param int     $post_id Ürün ID.
+	 * @param WP_Post $post    Post nesnesi.
+	 */
+	public static function save_metabox( $post_id, $post ) {
+		if ( ! isset( $_POST['wpwix_meta_nonce'] ) ) {
+			return;
+		}
+		if ( ! wp_verify_nonce( sanitize_key( $_POST['wpwix_meta_nonce'] ), 'wpwix_save_meta' ) ) {
+			return;
+		}
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+
+		$fields = array(
+			'_wpwixseo_title'    => 'wpwix_title',
+			'_wpwixseo_desc'     => 'wpwix_desc',
+			'_wpwixseo_focus_kw' => 'wpwix_focus_kw',
+			'_wpwixseo_alt'      => 'wpwix_alt',
+		);
+
+		foreach ( $fields as $meta_key => $input ) {
+			$value = sanitize_text_field( wp_unslash( $_POST[ $input ] ?? '' ) );
+			if ( '' === $value ) {
+				delete_post_meta( $post_id, $meta_key );
+			} else {
+				update_post_meta( $post_id, $meta_key, $value );
+			}
+		}
+
+		if ( empty( $_POST['wpwix_noindex'] ) ) {
+			delete_post_meta( $post_id, '_wpwixseo_noindex' );
+		} else {
+			update_post_meta( $post_id, '_wpwixseo_noindex', '1' );
+		}
+	}
+
+	/* ------------------------------------------------------------------
+	 * Ürün listesi skor sütunu
+	 * ---------------------------------------------------------------- */
+
+	/**
+	 * @param array<string,string> $columns Mevcut sütunlar.
+	 * @return array<string,string>
+	 */
+	public static function add_score_column( $columns ) {
+		$columns['wpwix_score'] = __( 'SEO Skoru', 'wpwix-seo' );
+
+		return $columns;
+	}
+
+	/**
+	 * @param string $column  Sütun anahtarı.
+	 * @param int    $post_id Ürün ID.
+	 */
+	public static function render_score_column( $column, $post_id ) {
+		if ( 'wpwix_score' !== $column ) {
+			return;
+		}
+
+		$score = get_post_meta( $post_id, '_wpwixseo_score', true );
+		if ( '' === $score ) {
+			echo '<span class="wpwix-score-badge wpwix-score-none">—</span>';
+			return;
+		}
+
+		$score = (int) $score;
+		printf(
+			'<span class="wpwix-score-badge %s">%d</span>',
+			esc_attr( WPWix_SEO_Analyzer::get_color_class( $score ) ),
+			esc_html( $score ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- int, %d ile basılıyor.
+		);
+	}
+
+	/**
+	 * @param array<string,string> $columns Sıralanabilir sütunlar.
+	 * @return array<string,string>
+	 */
+	public static function make_score_sortable( $columns ) {
+		$columns['wpwix_score'] = 'wpwix_score';
+
+		return $columns;
+	}
+
+	/**
+	 * Skora göre sıralama; skoru olmayan ürünler de listede kalır.
+	 *
+	 * @param WP_Query $query Liste sorgusu.
+	 */
+	public static function sort_by_score( $query ) {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+		if ( 'wpwix_score' !== $query->get( 'orderby' ) ) {
+			return;
+		}
+
+		$query->set(
+			'meta_query',
+			array(
+				'relation'    => 'OR',
+				'score'       => array(
+					'key'     => '_wpwixseo_score',
+					'compare' => 'EXISTS',
+					'type'    => 'NUMERIC',
+				),
+				'score_empty' => array(
+					'key'     => '_wpwixseo_score',
+					'compare' => 'NOT EXISTS',
+				),
+			)
+		);
+		$query->set( 'orderby', array( 'score' => $query->get( 'order' ) ?: 'ASC' ) );
 	}
 }
